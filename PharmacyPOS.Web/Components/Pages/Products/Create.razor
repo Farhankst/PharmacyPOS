@@ -1,0 +1,65 @@
+﻿@page "/products/create"
+
+@using PharmacyPOS.Application.DTOs.Products
+@using PharmacyPOS.Web.Services.ApiClients
+
+@inject ProductApiClient ProductApi
+@inject NavigationManager Navigation
+
+<h3>Create Product</h3>
+
+<div class="mb-3">
+    <label>Product Code</label>
+
+    <input class="form-control"
+           @bind="model.Code" />
+</div>
+
+<div class="mb-3">
+    <label>Product Name</label>
+
+    <input class="form-control"
+           @bind="model.Name" />
+</div>
+
+<div class="mb-3">
+    <label>Unit Price</label>
+
+    <input type="number"
+           class="form-control"
+           @bind="model.UnitPrice" />
+</div>
+
+<button class="btn btn-primary"
+        @onclick="Save"
+        disabled="@saving">
+
+    @(saving ? "Saving..." : "Save")
+
+</button>
+
+@code {
+
+    private CreateProductDto model = new();
+
+    private bool saving;
+
+    private async Task Save()
+    {
+        try
+        {
+            saving = true;
+
+            var result = await ProductApi.CreateAsync(model);
+
+            if (result != null)
+            {
+                Navigation.NavigateTo("/products");
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}
