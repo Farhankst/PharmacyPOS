@@ -1,0 +1,45 @@
+@page "/Account/Users/Create"
+@attribute [Authorize(Roles = AppRoles.Admin)]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using PharmacyPOS.Web.Data
+@inject UserManager<ApplicationUser> Users
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>Create User</PageTitle>
+<h1>Create User</h1>
+@if (error != null) { <div class="alert alert-danger" role="alert">@error</div> }
+<EditForm Model="Input" method="post" FormName="create-staff" OnValidSubmit="Save">
+    <DataAnnotationsValidator /><ValidationSummary />
+    <div class="mb-3"><label for="email">Email / Login</label><InputText id="email" class="form-control" @bind-Value="Input.Email" /></div>
+    <div class="mb-3"><label for="password">Initial password</label><InputText id="password" type="password" autocomplete="new-password" class="form-control" @bind-Value="Input.Password" /></div>
+    <div class="mb-3"><label for="role">Role</label><InputSelect id="role" class="form-select" @bind-Value="Input.Role">
+        @foreach (var role in AppRoles.Staff) { <option value="@role">@role</option> }
+    </InputSelect></div>
+    <button class="btn btn-primary" type="submit">Create</button>
+    <a class="btn btn-secondary" href="/Account/Users">Cancel</a>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm] private InputModel Input { get; set; } = new();
+    private string? error;
+    private async Task Save()
+    {
+        if (!AppRoles.Staff.Contains(Input.Role)) { error = "Invalid role."; return; }
+        await using var tx = await Db.Database.BeginTransactionAsync();
+        var email = Input.Email.Trim();
+        var user = new ApplicationUser { UserName = email, Email = email, LockoutEnabled = true };
+        var result = await Users.CreateAsync(user, Input.Password);
+        if (result.Succeeded) result = await Users.AddToRoleAsync(user, Input.Role);
+        if (!result.Succeeded) { error = string.Join("; ", result.Errors.Select(e => e.Description)); return; }
+        await tx.CommitAsync();
+        Navigation.NavigateTo("/Account/Users");
+    }
+    private sealed class InputModel
+    {
+        [Required, EmailAddress, StringLength(256)] public string Email { get; set; } = "";
+        [Required, StringLength(100, MinimumLength = 12)] public string Password { get; set; } = "";
+        [Required] public string Role { get; set; } = AppRoles.Cashier;
+    }
+}

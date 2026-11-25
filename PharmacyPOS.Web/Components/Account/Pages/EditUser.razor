@@ -1,0 +1,73 @@
+@page "/Account/Users/Edit/{Id}"
+@attribute [Authorize(Roles = AppRoles.Admin)]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using PharmacyPOS.Web.Data
+@inject UserManager<ApplicationUser> Users
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>Manage User</PageTitle>
+<h1>Manage User</h1>
+@if (error != null) { <div class="alert alert-danger" role="alert">@error</div> }
+@if (target != null)
+{
+    <p>@target.Email</p>
+    <EditForm Model="Input" method="post" FormName="edit-staff" OnValidSubmit="Save">
+        <DataAnnotationsValidator /><ValidationSummary />
+        <div class="mb-3"><label for="role">Role</label><InputSelect id="role" class="form-select" @bind-Value="Input.Role">
+            @foreach (var role in AppRoles.Staff) { <option value="@role">@role</option> }
+        </InputSelect></div>
+        <div class="form-check mb-3"><InputCheckbox id="disabled" class="form-check-input" @bind-Value="Input.Disabled" /><label for="disabled">Disable account</label></div>
+        <div class="mb-3"><label for="password">New password (optional)</label><InputText id="password" type="password" autocomplete="new-password" class="form-control" @bind-Value="Input.NewPassword" /></div>
+        <button class="btn btn-primary" type="submit">Save changes</button>
+        <a class="btn btn-secondary" href="/Account/Users">Cancel</a>
+    </EditForm>
+}
+else { <a href="/Account/Users">Back to users</a> }
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    [SupplyParameterFromForm] private InputModel? Input { get; set; }
+    private ApplicationUser? target;
+    private string? error;
+    protected override async Task OnInitializedAsync()
+    {
+        target = await Users.FindByIdAsync(Id);
+        if (target == null || await Users.IsInRoleAsync(target, AppRoles.Admin))
+        {
+            target = null; error = "User not found or protected."; return;
+        }
+        var roles = await Users.GetRolesAsync(target);
+        Input ??= new() { Role = roles.FirstOrDefault(AppRoles.Staff.Contains) ?? AppRoles.Cashier,
+            Disabled = target.LockoutEnd == DateTimeOffset.MaxValue };
+    }
+    private async Task Save()
+    {
+        if (Input == null || !AppRoles.Staff.Contains(Input.Role)) { error = "Invalid role."; return; }
+        if (target == null || await Users.IsInRoleAsync(target, AppRoles.Admin)) { error = "Protected account."; return; }
+        await using var tx = await Db.Database.BeginTransactionAsync();
+        var roles = await Users.GetRolesAsync(target);
+        var remove = roles.Where(r => r != Input.Role).ToArray();
+        var result = remove.Length == 0 ? IdentityResult.Success : await Users.RemoveFromRolesAsync(target, remove);
+        if (result.Succeeded && !roles.Contains(Input.Role)) result = await Users.AddToRoleAsync(target, Input.Role);
+        if (result.Succeeded) result = await Users.SetLockoutEnabledAsync(target, true);
+        if (result.Succeeded) result = await Users.SetLockoutEndDateAsync(target, Input.Disabled ? DateTimeOffset.MaxValue : null);
+        if (result.Succeeded) result = await Users.ResetAccessFailedCountAsync(target);
+        if (result.Succeeded && !string.IsNullOrEmpty(Input.NewPassword))
+        {
+            var token = await Users.GeneratePasswordResetTokenAsync(target);
+            result = await Users.ResetPasswordAsync(target, token, Input.NewPassword);
+        }
+        if (result.Succeeded) result = await Users.UpdateSecurityStampAsync(target);
+        if (!result.Succeeded) { error = string.Join("; ", result.Errors.Select(e => e.Description)); return; }
+        await tx.CommitAsync();
+        Navigation.NavigateTo("/Account/Users");
+    }
+    private sealed class InputModel
+    {
+        [Required] public string Role { get; set; } = AppRoles.Cashier;
+        public bool Disabled { get; set; }
+        [StringLength(100, MinimumLength = 12)] public string? NewPassword { get; set; }
+    }
+}

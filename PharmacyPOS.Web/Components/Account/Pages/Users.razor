@@ -1,0 +1,45 @@
+@page "/Account/Users"
+@attribute [Authorize(Roles = AppRoles.Admin)]
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using PharmacyPOS.Web.Data
+@inject UserManager<ApplicationUser> Users
+
+<PageTitle>User Management</PageTitle>
+<h1>User Management</h1>
+<a class="btn btn-primary mb-3" href="/Account/Users/Create">Create User</a>
+<h2 class="h5">System Roles</h2>
+<p>Admin — user administration and products; Manager — product maintenance; Cashier — product viewing.</p>
+<table class="table table-bordered">
+    <thead><tr><th>Email</th><th>Roles</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>
+        @foreach (var row in rows)
+        {
+            <tr>
+                <td>@row.Email</td><td>@row.Roles</td><td>@row.Status</td>
+                <td>
+                    @if (!row.Admin)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" href="@($"/Account/Users/Edit/{row.Id}")">Manage</a>
+                    }
+                    else { <span>Protected</span> }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private readonly List<UserRow> rows = new();
+    protected override async Task OnInitializedAsync()
+    {
+        foreach (var user in await Users.Users.AsNoTracking().OrderBy(u => u.Email).ToListAsync())
+        {
+            var roles = await Users.GetRolesAsync(user);
+            var status = user.LockoutEnd == DateTimeOffset.MaxValue ? "Disabled" :
+                await Users.IsLockedOutAsync(user) ? "Locked" : "Active";
+            rows.Add(new(user.Id, user.Email ?? user.UserName ?? "", string.Join(", ", roles), status, roles.Contains(AppRoles.Admin)));
+        }
+    }
+    private record UserRow(string Id, string Email, string Roles, string Status, bool Admin);
+}

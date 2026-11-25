@@ -1,5 +1,6 @@
 ﻿using PharmacyPOS.Application.DTOs.Products;
 using PharmacyPOS.Application.Interfaces;
+using PharmacyPOS.Web.Security;
 
 namespace PharmacyPOS.Web.Endpoints;
 
@@ -9,7 +10,7 @@ public static class ProductEndpoints
         this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/products")
-            .WithTags("Products");
+            .WithTags("Products").RequireAuthorization(AccessPolicies.ProductRead);
 
         // Get All Products
         group.MapGet("/", async (IProductService service) =>
@@ -51,7 +52,7 @@ public static class ProductEndpoints
             {
                 return Results.Conflict(ex.Message);
             }
-        });
+        }).RequireAuthorization(AccessPolicies.ProductWrite);
 
         // Create Product
         group.MapPost("/", async (
@@ -64,6 +65,6 @@ public static class ProductEndpoints
                 $"/api/products/{product.Id}",
                 product
             );
-        });
+        }).RequireAuthorization(AccessPolicies.ProductWrite);
     }
 }

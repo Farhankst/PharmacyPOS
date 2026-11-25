@@ -1,9 +1,10 @@
 ﻿@page "/products"
+@attribute [Authorize(Policy = AccessPolicies.ProductRead)]
 
 @using PharmacyPOS.Application.DTOs.Products
-@using PharmacyPOS.Web.Services.ApiClients
 
-@inject ProductApiClient ProductApi
+
+@inject AuthorizedProductService ProductApi
 
 <h3>Product List</h3>
 
@@ -31,7 +32,7 @@ else
                     <td>@item.Code</td>
                     <td>@item.Name</td>
                     <td>@item.UnitPrice</td>
-                    <td><a class="btn btn-primary btn-sm" href="@($"/products/edit/{item.Id}")">Edit</a></td>
+                    <td><AuthorizeView Policy="@AccessPolicies.ProductWrite"><a class="btn btn-primary btn-sm" href="@($"/products/edit/{item.Id}")">Edit</a></AuthorizeView></td>
                 </tr>
             }
         </tbody>

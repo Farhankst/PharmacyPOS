@@ -1,9 +1,10 @@
 @page "/products/edit/{Id:int}"
+@attribute [Authorize(Policy = AccessPolicies.ProductWrite)]
 
 @using PharmacyPOS.Application.DTOs.Products
-@using PharmacyPOS.Web.Services.ApiClients
 
-@inject ProductApiClient ProductApi
+
+@inject AuthorizedProductService ProductApi
 @inject NavigationManager Navigation
 
 <h3>Edit Product</h3>
@@ -112,10 +113,18 @@ else
         try
         {
             var result = await ProductApi.UpdateAsync(Id, model);
-            if (result.Product != null)
+            if (result != null)
                 Navigation.NavigateTo("/products");
             else
-                error = result.Error ?? "Unable to update product.";
+                error = "Product not found.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            error = ex.Message;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            error = "Your session or permissions have changed. Please sign in again.";
         }
         catch (Exception)
         {

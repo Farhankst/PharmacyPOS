@@ -1,12 +1,14 @@
 ﻿@page "/products/create"
+@attribute [Authorize(Policy = AccessPolicies.ProductWrite)]
 
 @using PharmacyPOS.Application.DTOs.Products
-@using PharmacyPOS.Web.Services.ApiClients
 
-@inject ProductApiClient ProductApi
+
+@inject AuthorizedProductService ProductApi
 @inject NavigationManager Navigation
 
 <h3>Create Product</h3>
+@if (error != null) { <div class="alert alert-danger">@error</div> }
 
 <div class="mb-3">
     <label>Product Code</label>
@@ -43,12 +45,14 @@
     private CreateProductDto model = new();
 
     private bool saving;
+    private string? error;
 
     private async Task Save()
     {
         try
         {
             saving = true;
+            error = null;
 
             var result = await ProductApi.CreateAsync(model);
 
@@ -56,6 +60,14 @@
             {
                 Navigation.NavigateTo("/products");
             }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            error = "Your session or permissions have changed. Please sign in again.";
+        }
+        catch (Exception)
+        {
+            error = "Unable to create product. Please try again.";
         }
         finally
         {
