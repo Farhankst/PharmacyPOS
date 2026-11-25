@@ -32,6 +32,27 @@ public static class ProductEndpoints
             return Results.Ok(product);
         });
 
+        // Update Product
+        group.MapPut("/{id:int}", async (
+            int id,
+            CreateProductDto model,
+            IProductService service) =>
+        {
+            try
+            {
+                var product = await service.UpdateAsync(id, model);
+                return product == null ? Results.NotFound() : Results.Ok(product);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Conflict(ex.Message);
+            }
+        });
+
         // Create Product
         group.MapPost("/", async (
             CreateProductDto model,

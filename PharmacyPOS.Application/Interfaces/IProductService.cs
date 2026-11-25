@@ -11,6 +11,8 @@ namespace PharmacyPOS.Application.Interfaces
 
         Task<ProductDto?> GetByIdAsync(int id);
 
+        Task<ProductDto?> UpdateAsync(int id, CreateProductDto model);
+
         Task<ProductDto> CreateAsync(CreateProductDto model);
     }
 }

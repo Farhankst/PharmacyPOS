@@ -20,6 +20,7 @@ else
                 <th>Code</th>
                 <th>Name</th>
                 <th>Unit Price</th>
+                <th>Action</th>
             </tr>
         </thead>
 
@@ -30,6 +31,7 @@ else
                     <td>@item.Code</td>
                     <td>@item.Name</td>
                     <td>@item.UnitPrice</td>
+                    <td><a class="btn btn-primary btn-sm" href="@($"/products/edit/{item.Id}")">Edit</a></td>
                 </tr>
             }
         </tbody>
