@@ -20,15 +20,15 @@ public static class IdentityBootstrap
 
         if ((await users.GetUsersInRoleAsync(AppRoles.Admin)).Count == 0)
         {
-            var email = configuration["IdentityBootstrap:Email"]?.Trim();
+            var username = (configuration["IdentityBootstrap:Username"] ?? configuration["IdentityBootstrap:Email"])?.Trim();
             var password = configuration["IdentityBootstrap:Password"];
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
-                throw new InvalidOperationException("Configure the initial admin email and password through secrets.");
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                throw new InvalidOperationException("Configure the initial admin username and password through secrets.");
 
-            if (await users.FindByEmailAsync(email) != null || await users.FindByNameAsync(email) != null)
+            if (await users.FindByNameAsync(username) != null)
                 throw new InvalidOperationException("Bootstrap will not promote an existing account.");
 
-            var admin = new ApplicationUser { UserName = email, Email = email, LockoutEnabled = true };
+            var admin = new ApplicationUser { UserName = username, LockoutEnabled = true };
             Ensure(await users.CreateAsync(admin, password));
             Ensure(await users.AddToRoleAsync(admin, AppRoles.Admin));
         }

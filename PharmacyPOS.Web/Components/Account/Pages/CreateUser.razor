@@ -13,7 +13,7 @@
 @if (error != null) { <div class="alert alert-danger" role="alert">@error</div> }
 <EditForm Model="Input" method="post" FormName="create-staff" OnValidSubmit="Save">
     <DataAnnotationsValidator /><ValidationSummary />
-    <div class="mb-3"><label for="email">Email / Login</label><InputText id="email" class="form-control" @bind-Value="Input.Email" /></div>
+    <div class="mb-3"><label for="username">Username</label><InputText id="username" class="form-control" @bind-Value="Input.UserName" /></div>
     <div class="mb-3"><label for="password">Initial password</label><InputText id="password" type="password" autocomplete="new-password" class="form-control" @bind-Value="Input.Password" /></div>
     <div class="mb-3"><label for="role">Role</label><InputSelect id="role" class="form-select" @bind-Value="Input.Role">
         @foreach (var role in AppRoles.Staff) { <option value="@role">@role</option> }
@@ -30,8 +30,8 @@
     {
         if (!AppRoles.Staff.Contains(Input.Role)) { error = "Invalid role."; return; }
         await using var tx = await Db.Database.BeginTransactionAsync();
-        var email = Input.Email.Trim();
-        var user = new ApplicationUser { UserName = email, Email = email, LockoutEnabled = true };
+        var username = Input.UserName.Trim();
+        var user = new ApplicationUser { UserName = username, LockoutEnabled = true };
         var result = await Users.CreateAsync(user, Input.Password);
         if (result.Succeeded) result = await Users.AddToRoleAsync(user, Input.Role);
         if (!result.Succeeded) { error = string.Join("; ", result.Errors.Select(e => e.Description)); return; }
@@ -41,8 +41,8 @@
     }
     private sealed class InputModel
     {
-        [Required, EmailAddress, StringLength(256)] public string Email { get; set; } = "";
-        [Required, StringLength(100, MinimumLength = 12)] public string Password { get; set; } = "";
+        [Required, StringLength(256)] public string UserName { get; set; } = "";
+        [Required, StringLength(100, MinimumLength = 6)] public string Password { get; set; } = "";
         [Required] public string Role { get; set; } = AppRoles.Cashier;
     }
 }

@@ -34,23 +34,23 @@ SELECT MigrationId FROM dbo.__EFMigrationsHistory ORDER BY MigrationId;
 
 ## Create the first administrator
 
-Run locally once after applying the migration. Do not commit credentials or put them in appsettings. Enter your own administrator email and strong password (at least 12 characters, uppercase, lowercase, digit and special character).
+Run locally once after applying the migration. Do not commit credentials or put them in appsettings. Enter your administrator username (e.g. admin) and password. In Development, a minimum of six characters is sufficient; no complexity rules apply. Production retains the 12-character complexity policy. Never use a simple development password on a deployed system.
 
 ```powershell
 $env:IdentityBootstrap__Enabled = 'true'
-$env:IdentityBootstrap__Email = Read-Host 'Initial admin email'
+$env:IdentityBootstrap__Username = Read-Host 'Initial admin username'
 $secret = Read-Host 'Initial admin password' -AsSecureString
 $env:IdentityBootstrap__Password = [System.Net.NetworkCredential]::new('', $secret).Password
 try {
     dotnet run --project PharmacyPOS.Web --launch-profile https
 } finally {
-    Remove-Item Env:IdentityBootstrap__Enabled, Env:IdentityBootstrap__Email, Env:IdentityBootstrap__Password -ErrorAction SilentlyContinue
+    Remove-Item Env:IdentityBootstrap__Enabled, Env:IdentityBootstrap__Username, Env:IdentityBootstrap__Password -ErrorAction SilentlyContinue
     Remove-Variable secret -ErrorAction SilentlyContinue
 }
 ```
 
 After startup succeeds, stop it with Ctrl+C to clear the environment variables, then restart normally with the HTTPS launch profile. If the project uses a differently named HTTPS launch profile, select that profile instead.
-Provisioning creates fixed roles Admin, Manager and Cashier and creates the first Admin only if none exists. It will not elevate an existing account or overwrite an existing password. Disable bootstrap after provisioning; use the admin login at /Account/Login.
+Provisioning creates fixed roles Admin, Manager and Cashier and creates the first Admin only if none exists. It will not elevate an existing account or overwrite an existing password. Do not deploy development accounts with weak passwords; rotate them before deployment. Disable bootstrap after provisioning; use the admin login at /Account/Login.
 
 ## Role matrix
 
@@ -71,7 +71,7 @@ The initial Admin is protected from staff-management edits and account deletion.
 3. Manager can create/edit products; cannot access user administration.
 4. Cashier can list products but cannot see Edit/Create links or invoke their routes or POST/PUT API endpoints (403).
 5. Admin changes a staff role, resets password, disables and reenables staff. Verify the old session loses product access and a disabled user cannot log in.
-6. Wrong password five times: temporary lockout. Verify password policy and duplicate email rejection.
+6. Wrong password five times: temporary lockout. Verify password policy and duplicate username rejection.
 7. Verify Products data and existing Product Edit functionality are preserved.
 8. Verify antiforgery protection on admin forms and logout. Test passkeys and two-factor authentication separately.
 

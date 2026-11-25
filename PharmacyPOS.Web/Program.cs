@@ -32,14 +32,17 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
     options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
-    options.User.RequireUniqueEmail = true;
+    options.User.RequireUniqueEmail = false; // Email is optional for username-based staff accounts.
     // Accounts are provisioned by an administrator; no public registration or email verification.
     options.SignIn.RequireConfirmedAccount = false;
-    options.Password.RequiredLength = 12;
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = true;
+    // Temporary simple passwords only for local development.
+    var development = builder.Environment.IsDevelopment();
+    options.Password.RequiredLength = development ? 6 : 12;
+    options.Password.RequireDigit = !development;
+    options.Password.RequireLowercase = !development;
+    options.Password.RequireUppercase = !development;
+    options.Password.RequireNonAlphanumeric = !development;
+    options.Password.RequiredUniqueChars = 1;
     options.Lockout.AllowedForNewUsers = true;
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);

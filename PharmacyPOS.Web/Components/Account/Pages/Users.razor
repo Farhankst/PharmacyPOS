@@ -11,12 +11,12 @@
 <h2 class="h5">System Roles</h2>
 <p>Admin — user administration and products; Manager — product maintenance; Cashier — product viewing.</p>
 <table class="table table-bordered">
-    <thead><tr><th>Email</th><th>Roles</th><th>Status</th><th>Action</th></tr></thead>
+    <thead><tr><th>Username</th><th>Roles</th><th>Status</th><th>Action</th></tr></thead>
     <tbody>
         @foreach (var row in rows)
         {
             <tr>
-                <td>@row.Email</td><td>@row.Roles</td><td>@row.Status</td>
+                <td>@row.UserName</td><td>@row.Roles</td><td>@row.Status</td>
                 <td>
                     @if (!row.Admin)
                     {
@@ -33,13 +33,13 @@
     private readonly List<UserRow> rows = new();
     protected override async Task OnInitializedAsync()
     {
-        foreach (var user in await UserManager.Users.AsNoTracking().OrderBy(u => u.Email).ToListAsync())
+        foreach (var user in await UserManager.Users.AsNoTracking().OrderBy(u => u.UserName).ToListAsync())
         {
             var roles = await UserManager.GetRolesAsync(user);
             var status = user.LockoutEnd == DateTimeOffset.MaxValue ? "Disabled" :
                 await UserManager.IsLockedOutAsync(user) ? "Locked" : "Active";
-            rows.Add(new(user.Id, user.Email ?? user.UserName ?? "", string.Join(", ", roles), status, roles.Contains(AppRoles.Admin)));
+            rows.Add(new(user.Id, user.UserName ?? "", string.Join(", ", roles), status, roles.Contains(AppRoles.Admin)));
         }
     }
-    private record UserRow(string Id, string Email, string Roles, string Status, bool Admin);
+    private record UserRow(string Id, string UserName, string Roles, string Status, bool Admin);
 }
