@@ -8,7 +8,11 @@
 
 <h3>Product List</h3>
 
-@if (products == null)
+@if (error != null)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+else if (products == null)
 {
     <p>Loading Products...</p>
 }
@@ -43,9 +47,21 @@ else
 @code {
 
     private List<ProductDto>? products;
+    private string? error;
 
     protected override async Task OnInitializedAsync()
     {
-        products = await ProductApi.GetAllAsync();
+        try
+        {
+            products = await ProductApi.GetAllAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            error = "Your session or permissions have changed. Please sign in again.";
+        }
+        catch (Exception)
+        {
+            error = "Unable to load products. Please try again.";
+        }
     }
 }

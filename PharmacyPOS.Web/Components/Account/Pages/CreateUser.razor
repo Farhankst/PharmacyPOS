@@ -6,6 +6,7 @@
 @inject UserManager<ApplicationUser> Users
 @inject ApplicationDbContext Db
 @inject NavigationManager Navigation
+@inject ILogger<CreateUser> Logger
 
 <PageTitle>Create User</PageTitle>
 <h1>Create User</h1>
@@ -22,7 +23,8 @@
 </EditForm>
 
 @code {
-    [SupplyParameterFromForm] private InputModel Input { get; set; } = new();
+    [SupplyParameterFromForm] private InputModel Input { get; set; } = default!;
+    protected override void OnInitialized() => Input ??= new();
     private string? error;
     private async Task Save()
     {
@@ -34,6 +36,7 @@
         if (result.Succeeded) result = await Users.AddToRoleAsync(user, Input.Role);
         if (!result.Succeeded) { error = string.Join("; ", result.Errors.Select(e => e.Description)); return; }
         await tx.CommitAsync();
+        Logger.LogInformation("Staff account {UserId} created with role {Role}", user.Id, Input.Role);
         Navigation.NavigateTo("/Account/Users");
     }
     private sealed class InputModel

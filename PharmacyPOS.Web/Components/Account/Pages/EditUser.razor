@@ -6,6 +6,7 @@
 @inject UserManager<ApplicationUser> Users
 @inject ApplicationDbContext Db
 @inject NavigationManager Navigation
+@inject ILogger<EditUser> Logger
 
 <PageTitle>Manage User</PageTitle>
 <h1>Manage User</h1>
@@ -15,11 +16,12 @@
     <p>@target.Email</p>
     <EditForm Model="Input" method="post" FormName="edit-staff" OnValidSubmit="Save">
         <DataAnnotationsValidator /><ValidationSummary />
-        <div class="mb-3"><label for="role">Role</label><InputSelect id="role" class="form-select" @bind-Value="Input.Role">
+        <div class="mb-3"><label for="email">Email / Login</label><InputText id="email" class="form-control" @bind-Value="Input!.Email" /></div>
+        <div class="mb-3"><label for="role">Role</label><InputSelect id="role" class="form-select" @bind-Value="Input!.Role">
             @foreach (var role in AppRoles.Staff) { <option value="@role">@role</option> }
         </InputSelect></div>
-        <div class="form-check mb-3"><InputCheckbox id="disabled" class="form-check-input" @bind-Value="Input.Disabled" /><label for="disabled">Disable account</label></div>
-        <div class="mb-3"><label for="password">New password (optional)</label><InputText id="password" type="password" autocomplete="new-password" class="form-control" @bind-Value="Input.NewPassword" /></div>
+        <div class="form-check mb-3"><InputCheckbox id="disabled" class="form-check-input" @bind-Value="Input!.Disabled" /><label for="disabled">Disable account</label></div>
+        <div class="mb-3"><label for="password">New password (optional)</label><InputText id="password" type="password" autocomplete="new-password" class="form-control" @bind-Value="Input!.NewPassword" /></div>
         <button class="btn btn-primary" type="submit">Save changes</button>
         <a class="btn btn-secondary" href="/Account/Users">Cancel</a>
     </EditForm>
@@ -39,7 +41,7 @@ else { <a href="/Account/Users">Back to users</a> }
             target = null; error = "User not found or protected."; return;
         }
         var roles = await Users.GetRolesAsync(target);
-        Input ??= new() { Role = roles.FirstOrDefault(AppRoles.Staff.Contains) ?? AppRoles.Cashier,
+        Input ??= new() { Email = target.Email ?? target.UserName ?? "", Role = roles.FirstOrDefault(AppRoles.Staff.Contains) ?? AppRoles.Cashier,
             Disabled = target.LockoutEnd == DateTimeOffset.MaxValue };
     }
     private async Task Save()
@@ -49,7 +51,14 @@ else { <a href="/Account/Users">Back to users</a> }
         await using var tx = await Db.Database.BeginTransactionAsync();
         var roles = await Users.GetRolesAsync(target);
         var remove = roles.Where(r => r != Input.Role).ToArray();
-        var result = remove.Length == 0 ? IdentityResult.Success : await Users.RemoveFromRolesAsync(target, remove);
+        var result = IdentityResult.Success;
+        var email = Input.Email.Trim();
+        if (!string.Equals(target.Email, email, StringComparison.Ordinal))
+            result = await Users.SetEmailAsync(target, email);
+        if (result.Succeeded && !string.Equals(target.UserName, email, StringComparison.Ordinal))
+            result = await Users.SetUserNameAsync(target, email);
+        if (result.Succeeded && remove.Length != 0)
+            result = await Users.RemoveFromRolesAsync(target, remove);
         if (result.Succeeded && !roles.Contains(Input.Role)) result = await Users.AddToRoleAsync(target, Input.Role);
         if (result.Succeeded) result = await Users.SetLockoutEnabledAsync(target, true);
         if (result.Succeeded) result = await Users.SetLockoutEndDateAsync(target, Input.Disabled ? DateTimeOffset.MaxValue : null);
@@ -62,10 +71,12 @@ else { <a href="/Account/Users">Back to users</a> }
         if (result.Succeeded) result = await Users.UpdateSecurityStampAsync(target);
         if (!result.Succeeded) { error = string.Join("; ", result.Errors.Select(e => e.Description)); return; }
         await tx.CommitAsync();
+        Logger.LogInformation("Staff account {UserId} updated; role {Role}, disabled {Disabled}", target.Id, Input.Role, Input.Disabled);
         Navigation.NavigateTo("/Account/Users");
     }
     private sealed class InputModel
     {
+        [Required, EmailAddress, StringLength(256)] public string Email { get; set; } = "";
         [Required] public string Role { get; set; } = AppRoles.Cashier;
         public bool Disabled { get; set; }
         [StringLength(100, MinimumLength = 12)] public string? NewPassword { get; set; }
