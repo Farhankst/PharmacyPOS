@@ -47,6 +47,43 @@ namespace PharmacyPOS.Application.Services
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<ProductDto?> UpdateAsync(int id, CreateProductDto model)
+        {
+            var product = await _db.Products
+                .FirstOrDefaultAsync(x => x.Id == id && !x.Archive);
+
+            if (product == null)
+                return null;
+
+            var code = model.Code?.Trim() ?? string.Empty;
+            var name = model.Name?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Product code and name are required.");
+
+            if (model.UnitPrice < 0)
+                throw new ArgumentException("Unit price cannot be negative.");
+
+            var normalizedCode = code.ToUpperInvariant();
+            if (await _db.Products.AnyAsync(x => x.Id != id &&
+                !x.Archive && x.Code.Trim().ToUpper() == normalizedCode))
+                throw new InvalidOperationException("Product code already exists.");
+
+            product.Code = code;
+            product.Name = name;
+            product.UnitPrice = model.UnitPrice;
+
+            await _db.SaveChangesAsync();
+
+            return new ProductDto
+            {
+                Id = product.Id,
+                Code = product.Code,
+                Name = product.Name,
+                UnitPrice = product.UnitPrice
+            };
+        }
+
         public async Task<ProductDto> CreateAsync(CreateProductDto model)
         {
             var product = new Product

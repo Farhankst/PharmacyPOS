@@ -35,6 +35,25 @@ namespace PharmacyPOS.Web.Services.ApiClients
                     $"api/products/{id}");
         }
 
+        // Update
+        public async Task<(ProductDto? Product, string? Error)> UpdateAsync(
+            int id, CreateProductDto model)
+        {
+            using var response = await _httpClient
+                .PutAsJsonAsync($"api/products/{id}", model);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return (null, "Product not found.");
+
+            if (response.StatusCode == System.Net.HttpStatusCode.BadRequest ||
+                response.StatusCode == System.Net.HttpStatusCode.Conflict)
+                return (null, await response.Content.ReadFromJsonAsync<string>()
+                    ?? "Unable to update product.");
+
+            response.EnsureSuccessStatusCode();
+            return (await response.Content.ReadFromJsonAsync<ProductDto>(), null);
+        }
+
         // Create
         public async Task<ProductDto?> CreateAsync(
             CreateProductDto model)
