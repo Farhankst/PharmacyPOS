@@ -3,7 +3,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using PharmacyPOS.Web.Data
-@inject UserManager<ApplicationUser> Users
+@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>User Management</PageTitle>
 <h1>User Management</h1>
@@ -33,11 +33,11 @@
     private readonly List<UserRow> rows = new();
     protected override async Task OnInitializedAsync()
     {
-        foreach (var user in await Users.Users.AsNoTracking().OrderBy(u => u.Email).ToListAsync())
+        foreach (var user in await UserManager.Users.AsNoTracking().OrderBy(u => u.Email).ToListAsync())
         {
-            var roles = await Users.GetRolesAsync(user);
+            var roles = await UserManager.GetRolesAsync(user);
             var status = user.LockoutEnd == DateTimeOffset.MaxValue ? "Disabled" :
-                await Users.IsLockedOutAsync(user) ? "Locked" : "Active";
+                await UserManager.IsLockedOutAsync(user) ? "Locked" : "Active";
             rows.Add(new(user.Id, user.Email ?? user.UserName ?? "", string.Join(", ", roles), status, roles.Contains(AppRoles.Admin)));
         }
     }
